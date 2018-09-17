@@ -1,0 +1,49 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <title>{$wa->appName()} &mdash; {$wa->accountName()}</title>
+        {$wa->css()}
+        <link href="{$wa_url}wa-content/js/jquery-plugins/ibutton/jquery.ibutton.min.css" rel="stylesheet" type="text/css" />
+        <link href="{$wa_app_static_url}css/pagespeed.css?v{$wa->version()}" rel="stylesheet" type="text/css" />
+        <script type="text/javascript" src="{$wa_url}wa-content/js/jquery/jquery-1.8.2.min.js"></script>
+        <script type="text/javascript" src="{$wa_url}wa-content/js/jquery-wa/wa.core.js"></script>
+        <script type="text/javascript" src="{$wa_url}wa-content/js/jquery-wa/wa.dialog.js"></script>
+        <script type="text/javascript" src="{$wa_url}wa-content/js/jquery-plugins/jquery.history.js"></script>
+
+        <script type="text/javascript" src="{$wa_url}wa-content/js/jquery-plugins/ibutton/jquery.ibutton.min.js"></script>
+        <script type="text/javascript" src="{$wa_app_static_url}js/pagespeed.js"></script>	
+    </head>
+    <body>
+        <div id="wa">
+            {$wa->header()}
+            <div id="wa-app">
+                <div class="sidebar left200px">
+
+
+                    <div class="block">
+
+                        <ul class="menu-v with-icons compact">
+                            <li>
+                                <a class="bold no-underline" href="#/settings/">
+                                    <i class="icon16 settings"></i>Настройки
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="content left200px" id="c-core">
+                    <div class="block not-padded c-core-content" id="content">
+                        <div class="block">
+                            <h1 class="wa-page-heading">Загрузка... <i class="icon16 loading"></i></h1>
+                        </div>				
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script type="text/javascript">
+            $.pagespeed.init();
+        </script>
+    </body>
+</html>
