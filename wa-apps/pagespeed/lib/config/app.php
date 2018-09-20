@@ -1,7 +1,7 @@
 <?php
 
 return array(
-    'name' => 'PageSpeed',
+    'name' => 'Оптимизация сайта',
     'icon' => array(
         96 => 'img/pagespeed96.png',
         48 => 'img/pagespeed.png',

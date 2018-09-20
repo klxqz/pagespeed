@@ -1,6 +1,5 @@
 <?php
 
-include(wa()->getConfig()->getRootPath() . '/wa-apps/pagespeed/lib/vendors/simpleHtmlDom/simple_html_dom.php');
 include(wa()->getConfig()->getRootPath() . '/wa-apps/pagespeed/lib/vendors/minify/src/Minify.php');
 include(wa()->getConfig()->getRootPath() . '/wa-apps/pagespeed/lib/vendors/minify/src/CSS.php');
 include(wa()->getConfig()->getRootPath() . '/wa-apps/pagespeed/lib/vendors/minify/src/JS.php');
@@ -17,136 +16,363 @@ class pagespeed {
 
     protected $helper;
     protected $settings;
+    protected $css_merge_list = array();
+    protected $js_merge_list = array();
+    protected $move_list = array();
+    protected static $inited = false;
 
     public function __construct() {
         $this->helper = new pagespeedHelper();
         $this->settings = wa('pagespeed')->getConfig()->getSettings();
     }
 
+    public static function init() {
+        if (!self::$inited) {
+            $view = wa()->getView();
+            $smarty_plugins_dir = wa()->getAppPath('lib/smarty-plugins/', 'pagespeed');
+            $view->smarty->addPluginsDir($smarty_plugins_dir);
+            self::$inited = true;
+        }
+    }
+
     public function acceleration($html) {
-        if (empty($this->settings['status'])) {
+        if (!$this->settings['status']) {
             return $html;
         }
+        //$start = microtime(true);
+        $html = preg_replace('/<!--(.|\s)*?-->/', '', $html);
 
-        $dom = new simple_html_dom();
-        $dom->load($html, $lowercase = true, $stripRN = false, $defaultBRText = DEFAULT_BR_TEXT);
+        if ($this->settings['css_minify']) {
+            $html = $this->setRegexCallback("/<link[^>]*href\s*=\s*[\"']([^\"']+)[\"'][^>]*>/si", $html, 'cssRegexLink');
 
-        if (!empty($this->settings['css_minify'])) {
-            $this->css($dom);
+            if ($this->settings['css_inline']) {
+                $html = $this->setRegexCallback("/<style[^>]*>(.*?)<\/style>/si", $html, 'cssRegexStyle');
+            }
+
+            if ($this->settings['css_merge']) {
+                $html = $this->setRegexCallback("/<link[^>]*href\s*=\s*[\"']([^\"']+)[\"'][^>]*>/si", $html, 'regexMerge');
+                if ($combine_url = $this->combine('css')) {
+                    $append_html = '<link href="' . $combine_url . '" rel="stylesheet" type="text/css"/>';
+                    $html = preg_replace("/(<\/head>)/is", "{$append_html}\n$1", $html);
+                }
+            }
+            if ($this->settings['css_move']) {
+                $html = $this->setRegexCallback("/<link[^>]*href\s*=\s*[\"']([^\"']+)[\"'][^>]*>/si", $html, 'regexMove', 'css');
+            }
         }
 
+        if ($this->settings['js_minify']) {
+            $html = $this->setRegexCallback("/<script[^>]*>(.*?)<\/script>/si", $html, 'jsRegexScript');
+            if ($this->settings['js_merge']) {
+                $html = $this->setRegexCallback("/<script[^>]*src\s*=\s*[\"']([^\"']+)[\"'][^>]*>(.*?)<\/script>/si", $html, 'regexMerge');
+                if ($combine_url = $this->combine('js')) {
+                    $append_html = '<script type="text/javascript" src="' . $combine_url . '"></script>';
+                    $html = preg_replace("/(<\/head>)/is", "{$append_html}\n$1", $html);
+                }
+            }
+            if ($this->settings['js_move']) {
+                $html = $this->setRegexCallback("/<script[^>]*src\s*=\s*[\"']([^\"']+)[\"'][^>]*>(.*?)<\/script>/si", $html, 'regexMove', 'js');
+            }
+        }
 
+        if ($this->move_list) {
+            $html = $this->appendPreloader($html);
+            $html = preg_replace("/(<\/body>)/is", implode("\n", $this->move_list) . "\n$1", $html);
+        }
 
-        $html = $dom->save();
+        if ($this->settings['html_minify']) {
+            $search = array(
+                '/\>[^\S ]+/s', // strip whitespaces after tags, except space
+                '/[^\S ]+\</s', // strip whitespaces before tags, except space
+                '/(\s)+/s', // shorten multiple whitespace sequences
+            );
+            $replace = array(
+                '>',
+                '<',
+                '\\1',
+            );
+            $html = preg_replace($search, $replace, $html);
+        }
+
+        //$finish = microtime(true);
+        //$delta = $finish - $start;
+        //echo " {$delta} сек.";
+        //exit('ss');
+        //$html = gzencode($html, 9, FORCE_GZIP);
         return $html;
     }
 
-    protected function css(&$dom) {
-        $links = $dom->find('link');
-        if ($links) {
-            foreach ($links as &$link) {
-                if (!(
-                        (isset($link->type) && $link->type == 'text/css') ||
-                        (isset($link->rel) && $link->rel == 'stylesheet') ||
-                        (isset($link->property) && $link->property == 'stylesheet')
-                        )) {
-                    continue;
+    protected function cssRegexLink($match) {
+        try {
+            if (!preg_match("/rel\s*=\s*[\"']stylesheet[\"']\s*|type\s*=\s*[\"']text\/css[\"']\s*/si", $match[0][0])) {
+                return false;
+            }
+            $href = $match[1][0];
+            if ($url = $this->getMinifyUrl($href, 'css')) {
+                return str_replace($href, $url, $match[0][0]);
+            }
+            return false;
+        } catch (Exception $ex) {
+            $this->log($ex->getMessage());
+            return false;
+        }
+    }
+
+    protected function cssRegexStyle($match) {
+        try {
+            $content = $match[1][0];
+            if ($url = $this->getMinifyUrl($content, 'css', true)) {
+                return '<link href="' . $url . '" rel="stylesheet" type="text/css"/>';
+            }
+            return false;
+        } catch (Exception $ex) {
+            $this->log($ex->getMessage());
+            return false;
+        }
+    }
+
+    protected function jsRegexScript($match) {
+        try {
+            if (preg_match("/<script[^>]*src\s*=\s*[\"']([^\"']+)[\"'][^>]*>(.*?)<\/script>/si", $match[0][0], $match2)) {
+                $src = $match2[1];
+                if (($url = $this->getMinifyUrl($src, 'js'))) {
+                    return str_replace($src, $url, $match[0][0]);
                 }
-
-                if ($this->helper->isRemoteFile($link->href) && !empty($this->settings['css_download_remote_files'])) {
-                    try {
-                        $url = $link->href;
-                        $minify_path = $this->helper->getMinifyPath($url, 'css', $this->settings['css_gzip']);
-
-                        $download = true;
-                        if (is_readable($minify_path)) {
-                            $update_time = ifset($this->settings['css_update_time_remote_files']);
-                            $expires_time = filemtime($minify_path) + $update_time;
-                            if (time() < $expires_time) {
-                                $download = false;
-                            }
-                        }
-
-                        if ($download) {
-                            $content = $this->helper->curlGetContents($url);
-                            if (!$content) {
-                                throw new waException('Получен пустой ответ. URL: ' . $url);
-                            }
-                            $this->minifyCss($content, $minify_path);
-                        }
-                        $link->href = $this->makeUrl($url, 'css');
-                    } catch (Exception $ex) {
-                        $this->log($ex->getMessage());
-                    }
-                } elseif ($local_path = $this->helper->isLocalFile($link->href)) {
-                    $name = $link->href;
-                    if ($param_ofset = strpos($name, '?')) {
-                        $name = substr($name, 0, $param_ofset);
-                    }
-                    $minify_path = $this->helper->getMinifyPath($name, 'css', $this->settings['css_gzip']);
-
-                    if (
-                            !is_readable($minify_path) ||
-                            $this->helper->fileHash($local_path) != $this->helper->fileHash($minify_path)
-                    ) {
-                        $this->minifyCss($local_path, $minify_path);
-                    }
-                    $link->href = $this->makeUrl($link->href, 'css');
+            } elseif ($this->settings['js_inline'] && ($content = trim($match[1][0]))) {
+                if (($url = $this->getMinifyUrl($content, 'js', true))) {
+                    return '<script type="text/javascript" src="' . $url . '"></script>';
                 }
             }
-            unset($link);
+            return false;
+        } catch (Exception $ex) {
+            $this->log($ex->getMessage());
+            return false;
+        }
+    }
+
+    protected function combine($type) {
+        if ($type == 'css') {
+            $merge_list = $this->css_merge_list;
+            $gzip = $this->settings['css_gzip'];
+            $gzip_level = $this->settings['css_gzip_level'];
+        } elseif ($type == 'js') {
+            $merge_list = $this->js_merge_list;
+            $gzip = $this->settings['js_gzip'];
+            $gzip_level = $this->settings['js_gzip_level'];
+        } else {
+            throw new waException('Указан неверный тип файла: ' . $type);
         }
 
-        $styles = $dom->find('style');
-        if ($styles && !empty($this->settings['css_style'])) {
-            foreach ($styles as &$style) {
-                $content = $style->innertext;
-                $hash = $this->helper->stringHash($content);
-                $name = $hash . '.css';
+        if (!$merge_list) {
+            return false;
+        }
 
-                $minify_path = $this->helper->getMinifyPath($name, 'css', $this->settings['css_gzip']);
+        $hash = $this->helper->stringHash(serialize($merge_list));
+        $name = $hash . '.' . $type;
+
+        $minify_path = $this->helper->getMinifyPath($name, $type, $gzip);
+
+        if (!is_readable($minify_path)) {
+            if (($handler = @fopen($minify_path, 'w')) === false) {
+                throw new waException('Ошибка создания файла: ' . $minify_path);
+            }
+            $content = '';
+            foreach ($merge_list as $merge_file) {
+                $content .= file_get_contents($merge_file) . ($type == 'js' ? ';' : '');
+            }
+            if ($gzip) {
+                $content = gzencode($content, $gzip_level, FORCE_GZIP);
+            }
+
+            if (($result = @fwrite($handler, $content)) === false || ($result < strlen($content))) {
+                throw new waException('Ошибка записи в файл: ' . $minify_path);
+            }
+            @fclose($handler);
+        }
+        return $this->makeUrl($name, $type);
+    }
+
+    protected function regexMerge($match) {
+        try {
+
+            $pagespeed_url = str_replace('/', '\/', wa()->getRouteUrl('pagespeed/frontend'));
+            if (!preg_match("/" . $pagespeed_url . "\?url=([^&]*)&type=([^&]*)/si", $match[1][0], $params)) {
+                return false;
+            }
+            list($link, $url, $type) = $params;
+
+            if (!$url || !$type) {
+                return false;
+            }
+            if (!in_array($type, array('css', 'js'))) {
+                throw new waException('Указан неверный тип файла: ' . $type);
+            }
+
+            $url = urldecode($url);
+
+            if ($this->helper->isLocalFile($url)) {
+                if ($param_ofset = strpos($url, '?')) {
+                    $url = substr($url, 0, $param_ofset);
+                }
+            }
+
+            $minify_path = $this->helper->getMinifyPath($url, $type);
+            if (!file_exists($minify_path)) {
+                return false;
+            }
+            $hash = $this->helper->fileHash($minify_path);
+
+
+            if ($type == 'css') {
+                $this->css_merge_list[$hash] = $minify_path;
+            } elseif ($type == 'js') {
+                $this->js_merge_list[$hash] = $minify_path;
+            }
+
+            return '';
+        } catch (Exception $ex) {
+            $this->log($ex->getMessage());
+            return false;
+        }
+    }
+
+    protected function regexMove($match, $type) {
+        try {
+            if ($type == 'css') {
+                if (!preg_match("/rel\s*=\s*[\"']stylesheet[\"']\s*|type\s*=\s*[\"']text\/css[\"']\s*/si", $match[0][0])) {
+                    return false;
+                }
+                $this->move_list[] = $match[0][0];
+                return '';
+            } elseif ($type == 'js') {
+
+                $this->move_list[] = $match[0][0];
+                return '';
+            } else {
+                throw new waException('Указан неверный тип файла: ' . $type);
+            }
+            return false;
+        } catch (Exception $ex) {
+            $this->log($ex->getMessage());
+            return false;
+        }
+    }
+
+    protected function setRegexCallback($pattern, $content, $method_name, $params = null) {
+        $processed = '';
+        do {
+            $match = null;
+            if (preg_match($pattern, $content, $match, PREG_OFFSET_CAPTURE)) {
+                $text = $match[0][0];
+                $offset = $match[0][1];
+                //$start = $offset + strlen($text);
+                if (!method_exists($this, $method_name)) {
+                    throw new waException(sprintf('Метод %s->%s() не существует', get_class($this), $method_name));
+                }
+                if (($replacement = $this->$method_name($match, $params)) !== false) {
+                    $processed .= substr($content, 0, $offset);
+                    $processed .= $replacement;
+                } else {
+                    $processed .= substr($content, 0, $offset);
+                    $processed .= $text;
+                }
+
+                $content = substr($content, $offset + strlen($text));
+            } else {
+                $processed .= $content;
+            }
+        } while ($match);
+
+        return $processed;
+    }
+
+    protected function getMinifyUrl($url, $type, $is_content = false) {
+        if ($type == 'css') {
+            $gzip = $this->settings['css_gzip'] && !$this->settings['css_merge'];
+            $download_remote_files = $this->settings['css_download_remote_files'];
+            $update_time_remote_files = $this->settings['css_update_time_remote_files'];
+        } elseif ($type == 'js') {
+            $gzip = $this->settings['js_gzip'] && !$this->settings['js_merge'];
+            $download_remote_files = $this->settings['js_download_remote_files'];
+            $update_time_remote_files = $this->settings['js_update_time_remote_files'];
+        } else {
+            throw new waException('Указан неверный тип файла: ' . $type);
+        }
+
+        if (!$is_content) {
+            $local_path = null;
+            $new_url = null;
+
+            if ($download_remote_files && $this->helper->isRemoteFile($url)) {
+                $download_path = $this->helper->getDownloadPath($url, $type);
+
+                $download = true;
+                if (file_exists($download_path)) {
+                    $expires_time = filemtime($download_path) + $update_time_remote_files;
+                    if (time() < $expires_time) {
+                        $download = false;
+                    }
+                }
+
+                if ($download) {
+                    $content = $this->helper->curlGetContents($url);
+                    if (!$content) {
+                        throw new waException('Получен пустой ответ. URL: ' . $url);
+                    }
+                    if (($handler = @fopen($download_path, 'w')) === false) {
+                        throw new waException('Ошибка создания файла: ' . $download_path);
+                    }
+                    if (($result = @fwrite($handler, $content)) === false || ($result < strlen($content))) {
+                        throw new waException('Ошибка записи в файл: ' . $download_path);
+                    }
+                    @fclose($handler);
+                }
+
+                $new_url = str_replace(wa()->getConfig()->getRootPath(), '', $download_path);
+                $local_path = $download_path;
+            }
+
+            if ($local_path || ($local_path = $this->helper->isLocalFile($url))) {
+                $name = $this->helper->fileHash($local_path) . '_' . ($new_url ? $new_url : $url);
+                if ($param_ofset = strpos($name, '?')) {
+                    $name = substr($name, 0, $param_ofset);
+                }
+                $minify_path = $this->helper->getMinifyPath($name, $type, $gzip);
 
                 if (!is_readable($minify_path)) {
-                    $this->minifyCss($content, $minify_path);
+                    $this->minify($type, $local_path, $minify_path);
                 }
-                $style->outertext = str_get_html('<link href="' . $this->makeUrl($name, 'css') . '" rel="stylesheet" type="text/css"/>');
+                return $this->makeUrl($name, $type);
             }
-            unset($style);
+        } else {
+            $content = $url;
+            $name = $this->helper->stringHash($content) . '.' . $type;
+            $minify_path = $this->helper->getMinifyPath($name, $type, $gzip);
+            if (!file_exists($minify_path)) {
+                $this->minify($type, $content, $minify_path);
+            }
+            return $this->makeUrl($name, $type);
         }
 
-        if (!empty($this->settings['css_minify'])) {
-            $this->mergeCss($dom);
-        }
+        return false;
     }
 
-    protected function mergeCss(&$dom) {
-
-        $links = $dom->find('style');
-        if (!$links) {
-            return;
+    protected function minify($type, $source_path_or_content, $minify_path) {
+        if ($type == 'css') {
+            $minifier = new Minify\CSS($source_path_or_content);
+            $minifier->setMaxImportSize($this->settings['css_max_import_size']);
+            $gzip = $this->settings['css_gzip'] && !$this->settings['css_merge'];
+            $gzip_level = $this->settings['css_gzip_level'];
+        } elseif ($type == 'js') {
+            $minifier = new Minify\JS($source_path_or_content);
+            $gzip = $this->settings['js_gzip'] && !$this->settings['js_merge'];
+            $gzip_level = $this->settings['js_gzip_level'];
+        } else {
+            throw new waException('Указан неверный тип файла: ' . $type);
         }
-        foreach ($links as &$link) {
-            /*
-              if (!(
-              (isset($link->type) && $link->type == 'text/css') ||
-              (isset($link->rel) && $link->rel == 'stylesheet') ||
-              (isset($link->property) && $link->property == 'stylesheet')
-              )) {
-              continue;
-              } */
 
-            echo $link->outertext . ' ' . $link->href . "\n";
-        }
-        unset($link);
-        exit('ss');
-    }
-
-    protected function minifyCss($source_path_or_content, $minify_path) {
-        $minifier = new Minify\CSS($source_path_or_content);
-        $minifier->setMaxImportSize(5);
-        if (!empty($this->settings['css_gzip'])) {
-            $css_gzip_level = ifset($this->settings['css_gzip_level']);
-            $minifier->gzip($minify_path, $css_gzip_level);
+        if ($gzip) {
+            $minifier->gzip($minify_path, $gzip_level);
         } else {
             $minifier->minify($minify_path);
         }
@@ -160,47 +386,20 @@ class pagespeed {
         return wa()->getRouteUrl('pagespeed/frontend') . '?' . http_build_query($data);
     }
 
-    protected function minifyJS($html) {
-        $this->log('minifyJS');
-        $dom = new simple_html_dom();
-        $dom->load($html, $lowercase = true, $stripRN = false, $defaultBRText = DEFAULT_BR_TEXT);
-        $scripts = $dom->find('script');
-
-        foreach ($scripts as $script) {
-            if (isset($script->src)) {
-                $this->log('Обработка JS: ' . $script->src);
-                if ($this->helper->isRemoteFile($script->src)) {
-                    //удаленный файл
-                    $content = $this->helper->curlGetContents($script->src);
-                    $minifier = new Minify\JS($content);
-                    $name = $this->helper->validFileName($script->src);
-                    if (strtolower(pathinfo($name, PATHINFO_EXTENSION)) != 'js') {
-                        $name .= '.js';
-                    }
-                    $minifier->minify(wa()->getDataPath($name, true, 'pagespeed'));
-                    $script->src = wa()->getDataUrl($name, true, 'pagespeed');
-                } elseif ($local_path = $this->helper->isLocalFile($script->src)) {
-                    //локальный файл
-                    $name = basename($local_path);
-                    $minifier = new Minify\JS($local_path);
-                    $minifier->minify(wa()->getDataPath($name, true, 'pagespeed'));
-                    $script->src = wa()->getDataUrl($name, true, 'pagespeed');
-                }
-            } else {
-                $content = $script->innertext;
-                $name = md5($content) . '.js';
-                $minifier = new Minify\JS($content);
-                $minifier->minify(wa()->getDataPath($name, true, 'pagespeed'));
-                $script->src = wa()->getDataUrl($name, true, 'pagespeed');
-                $script->innertext = '';
-            }
-        }
-
-        return $dom->save();
-    }
-
     public function log($message) {
         waLog::log($message, 'pagespeed.log');
+    }
+
+    public function appendPreloader($html) {
+        $preloader_css = '<style>#pagespeed-preloader{text-align:center;width:100%;height:100%;position:fixed;background:#fff;z-index:9999999}#pagespeed-preloader span{top:50%;position:relative;display:inline-block;vertical-align:middle;width:10px;height:10px;margin:0 auto;background:black;border-radius:50px;-webkit-animation:loader 0.9s infinite alternate;-moz-animation:loader 0.9s infinite alternate}#pagespeed-preloader span:nth-of-type(2){-webkit-animation-delay:0.3s;-moz-animation-delay:0.3s}#pagespeed-preloader span:nth-of-type(3){-webkit-animation-delay:0.6s;-moz-animation-delay:0.6s}@-webkit-keyframes loader{0%{width:10px;height:10px;opacity:0.9;-webkit-transform:translateY(0)}100%{width:24px;height:24px;opacity:0.1;-webkit-transform:translateY(-21px)}}@-moz-keyframes loader{0%{width:10px;height:10px;opacity:0.9;-moz-transform:translateY(0)}100%{width:24px;height:24px;opacity:0.1;-moz-transform:translateY(-21px)}}</style>';
+        $html = preg_replace("/(<\/head>)/is", "{$preloader_css}\n$1", $html);
+
+        $preloader = '<div id="pagespeed-preloader"><span></span><span></span><span></span></div>';
+        $html = preg_replace("/(<body[^>]*>)/is", "$1\n{$preloader}", $html);
+
+        $preloader_js = '<script type="text/javascript">document.addEventListener("DOMContentLoaded",function(){var e=document.getElementById("pagespeed-preloader");e.parentNode.removeChild(e)})</script>';
+        $html = preg_replace("/(<\/body>)/is", "{$preloader_js}\n$1", $html);
+        return $html;
     }
 
 }

@@ -60,17 +60,20 @@ class pagespeedHelper {
         return md5($string);
     }
 
-    public function getMinifyPath($name, $type, $css_gzip = 0) {
+    public function getMinifyPath($name, $type, $gzip = 0) {
+        return $this->getPath('minify', $name, $type, $gzip);
+    }
+
+    public function getDownloadPath($name, $type, $gzip = 0) {
+        return $this->getPath('download', $name, $type, $gzip);
+    }
+
+    protected function getPath($dir, $name, $type, $gzip = 0) {
         $name = $this->validFileName($name);
         if (strtolower(pathinfo($name, PATHINFO_EXTENSION)) != $type) {
             $name .= '.' . $type;
         }
-        if ($css_gzip) {
-            $short_path = $type . '/gzip/' . $name;
-        } else {
-            $short_path = $type . '/normal/' . $name;
-        }
-        return wa()->getCachePath($short_path, 'pagespeed');
+        return wa()->getCachePath(sprintf('%s/%s/%s/%s', $dir, $type, ($gzip ? 'gzip' : 'normal'), $name), 'pagespeed');
     }
 
 }

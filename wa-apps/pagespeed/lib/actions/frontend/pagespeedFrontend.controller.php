@@ -8,8 +8,14 @@ class pagespeedFrontendController extends waController {
         if (!$url || !$type) {
             throw new waException("File not found", 404);
         }
+        if ($type == 'css') {
+            $gzip = wa('pagespeed')->getConfig()->getSettings('css_gzip');
+        } elseif ($type == 'js') {
+            $gzip = wa('pagespeed')->getConfig()->getSettings('js_gzip');
+        } else {
+            throw new waException('Указан неверный тип файла: ' . $type);
+        }
 
-        $css_gzip = wa('pagespeed')->getConfig()->getSettings('css_gzip');
         $helper = new pagespeedHelper();
 
         if ($helper->isLocalFile($url)) {
@@ -18,13 +24,13 @@ class pagespeedFrontendController extends waController {
             }
         }
 
-        $minify_path = $helper->getMinifyPath($url, $type, $css_gzip);
+        $minify_path = $helper->getMinifyPath($url, $type, $gzip);
 
         if (!is_readable($minify_path)) {
             throw new waException("File not found", 404);
         }
 
-        if ($css_gzip) {
+        if ($gzip) {
             $response = wa()->getResponse();
             $response->addHeader("Content-Encoding", "gzip");
         }
