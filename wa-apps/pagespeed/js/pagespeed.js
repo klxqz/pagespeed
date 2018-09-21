@@ -102,6 +102,15 @@
                 className: 'mini'
             });
 
+            $("#pagespeed-tabs-block ul.tabs li a").click(function () {
+                $("#pagespeed-tabs-block ul.tabs li.selected").removeClass('selected');
+                var id = $(this).parent().addClass('selected').attr('id') + '-content';
+                $("#pagespeed-tabs-block div.tab-content").hide();
+                $('#' + id).show();
+                return false;
+            });
+            $("#pagespeed-tabs-block ul.tabs li:first a").click();
+
             $('#settings-form').submit(function () {
                 var form = this;
                 $.ajax({

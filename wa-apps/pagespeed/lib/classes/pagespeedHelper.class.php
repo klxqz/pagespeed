@@ -15,7 +15,7 @@ class pagespeedHelper {
         }
         $local_path = wa()->getConfig()->getRootPath() . '/' . ltrim($url, '/');
 
-        if (is_readable($local_path)) {
+        if (file_exists($local_path)) {
             return $local_path;
         }
         return false;

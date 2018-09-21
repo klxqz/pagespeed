@@ -19,19 +19,32 @@ class pagespeed {
     protected $css_merge_list = array();
     protected $js_merge_list = array();
     protected $move_list = array();
+    protected $lazyload_img = '';
+    protected $lazyload_js = '';
     protected static $inited = false;
 
     public function __construct() {
         $this->helper = new pagespeedHelper();
         $this->settings = wa('pagespeed')->getConfig()->getSettings();
+        $this->lazyload_img = wa()->getAppStaticUrl('pagespeed') . 'img/loading.png';
+        $this->lazyload_js = wa()->getAppStaticUrl('pagespeed') . 'js/jquery-lazyload/jquery.lazyload.min.js?' . wa('pagespeed')->getConfig()->getInfo('version');
     }
 
     public static function init() {
-        if (!self::$inited) {
+        if (
+                !self::$inited &&
+                wa('pagespeed')->getConfig()->getSettings('status') &&
+                wa()->getEnv() == 'frontend'
+        ) {
             $view = wa()->getView();
             $smarty_plugins_dir = wa()->getAppPath('lib/smarty-plugins/', 'pagespeed');
             $view->smarty->addPluginsDir($smarty_plugins_dir);
             self::$inited = true;
+
+            if (wa('pagespeed')->getConfig()->getSettings('html_gzip')) {
+                $response = wa()->getResponse();
+                $response->addHeader("Content-Encoding", "gzip");
+            }
         }
     }
 
@@ -61,6 +74,11 @@ class pagespeed {
             }
         }
 
+        if ($this->settings['img_lazyload'] && !waRequest::isXMLHttpRequest()) {
+            $append_html = '<script type="text/javascript" src="' . $this->lazyload_js . '"></script>';
+            $html = preg_replace("/(<\/body>)/is", "{$append_html}\n$1", $html);
+        }
+
         if ($this->settings['js_minify']) {
             $html = $this->setRegexCallback("/<script[^>]*>(.*?)<\/script>/si", $html, 'jsRegexScript');
             if ($this->settings['js_merge']) {
@@ -76,9 +94,18 @@ class pagespeed {
         }
 
         if ($this->move_list) {
-            $html = $this->appendPreloader($html);
             $html = preg_replace("/(<\/body>)/is", implode("\n", $this->move_list) . "\n$1", $html);
+            $html = $this->appendPreloader($html);
         }
+
+        if ($this->settings['img_lazyload']) {
+            $html = $this->setRegexCallback("/<img[^>]*(src\s*=\s*[\"']([^\"']+)[\"'])[^>]*>/si", $html, 'imgRegexLazyLoad');
+        }
+
+        if ($this->settings['img_browser_cache'] && !$this->settings['img_lazyload']) {
+            $html = $this->setRegexCallback("/<img[^>]*src\s*=\s*[\"']([^\"']+)[\"'][^>]*>/si", $html, 'imgRegexBrowserCache');
+        }
+
 
         if ($this->settings['html_minify']) {
             $search = array(
@@ -94,12 +121,35 @@ class pagespeed {
             $html = preg_replace($search, $replace, $html);
         }
 
+        if ($this->settings['html_gzip']) {
+            $html = gzencode($html, $this->settings['html_gzip_level'], FORCE_GZIP);
+        }
+
         //$finish = microtime(true);
         //$delta = $finish - $start;
         //echo " {$delta} сек.";
         //exit('ss');
-        //$html = gzencode($html, 9, FORCE_GZIP);
+
         return $html;
+    }
+
+    protected function imgRegexLazyLoad($match) {
+        $img = $match[0][0];
+        $src_attr = $match[1][0];
+        $original_url = $match[2][0];
+
+        if ($this->settings['img_browser_cache']) {
+            $new_src = 'src="' . $this->makeUrl($this->lazyload_img, 'img') . '" data-original="' . $this->makeUrl($original_url, 'img') . '"';
+        } else {
+            $new_src = 'src="' . $this->lazyload_img . '" data-original="' . $original_url . '"';
+        }
+        return str_replace($src_attr, $new_src, $img);
+    }
+
+    protected function imgRegexBrowserCache($match) {
+        $src = $match[1][0];
+        $url = $this->makeUrl($src, 'img');
+        return str_replace($src, $url, $match[0][0]);
     }
 
     protected function cssRegexLink($match) {
@@ -172,7 +222,7 @@ class pagespeed {
 
         $minify_path = $this->helper->getMinifyPath($name, $type, $gzip);
 
-        if (!is_readable($minify_path)) {
+        if (!file_exists($minify_path)) {
             if (($handler = @fopen($minify_path, 'w')) === false) {
                 throw new waException('Ошибка создания файла: ' . $minify_path);
             }
@@ -339,7 +389,7 @@ class pagespeed {
                 }
                 $minify_path = $this->helper->getMinifyPath($name, $type, $gzip);
 
-                if (!is_readable($minify_path)) {
+                if (!file_exists($minify_path)) {
                     $this->minify($type, $local_path, $minify_path);
                 }
                 return $this->makeUrl($name, $type);

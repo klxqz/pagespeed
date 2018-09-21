@@ -14,191 +14,298 @@
                 </div>
             </div>
 
-            <div class="field-group" {if !$settings.status|default:''} style="display:none"{/if}>
-                <h3>Оптимизация CSS</h3>
-                <div class="field">
-                    <div class="name">Минимизация</div>
-                    <div class="value no-shift s-ibutton-checkbox">
-                        <input type="hidden" name="settings[css_minify]" value="0">
-                        <input class="ibutton" type="checkbox" name="settings[css_minify]" value="1"{if $settings.css_minify|default:''} checked{/if} >
-                        <p class="hint">Сжатие CSS-файлов путем приведения кода к более компактному виду: удаление лишних строк, пробелов, использование сокращенных выражений, удаление пустых правил и пр.</p>
+
+            <div id="pagespeed-tabs-block" >
+                <ul class="tabs">
+                    <li id="pagespeed-css" class="selected"><a href="#">Оптимизация CSS</a></li>
+                    <li id="pagespeed-js" class=""><a href="#">Оптимизация JS</a></li>
+                    <li id="pagespeed-html" class=""><a href="#">Оптимизация HTML</a></li>
+                    <li id="pagespeed-img" class=""><a href="#">Оптимизация изображений</a></li>
+                </ul>
+                <div id="pagespeed-css-content" class="tab-content s-dropdown-content">
+                    <div class="fields">
+                        <div class="field-group" {if !$settings.status|default:''} style="display:none"{/if}>
+                            <div class="field">
+                                <div class="name">Минимизация</div>
+                                <div class="value no-shift s-ibutton-checkbox">
+                                    <input type="hidden" name="settings[css_minify]" value="0">
+                                    <input class="ibutton" type="checkbox" name="settings[css_minify]" value="1"{if $settings.css_minify|default:''} checked{/if} >
+                                    <p class="hint">Сжатие CSS-файлов путем приведения кода к более компактному виду: удаление лишних строк, пробелов, использование сокращенных выражений, удаление пустых правил и пр.</p>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <div class="name">Максимальный размер импортируемых файлов</div>
+                                <div class="value">
+                                    <input class="short numerical" type="number" min="0" name="settings[css_max_import_size]" value="{$settings.css_max_import_size|default:'0'|escape}"> КБайт
+                                    <p class="hint">
+                                        Если в CSS используются изображения небольшого размера (или файлы других типов, например, шрифты), то их лучше импортировать непосредственно в CSS-файл.<br/> 
+                                        Импорт каждого изображения позволяет сократить количество запросов к серверу на получение изображений.<br/>
+                                        Однако очень большие изображения могут существенно увеличить размер CSS-файла, что может оказать негативное влияние.<br/>
+                                        0 - файлы не импортируются, рекомендуемый размер <strong>100</strong> КБайт
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <div class="name">GZip-сжатие</div>
+                                <div class="value no-shift s-ibutton-checkbox">
+                                    <input type="hidden" name="settings[css_gzip]" value="0">
+                                    <input class="ibutton" type="checkbox" name="settings[css_gzip]" value="1"{if $settings.css_gzip|default:''} checked{/if} >
+                                    <p class="hint">Использовать программную функцию сжатия gzip</p>
+                                </div>
+                            </div>
+                            <div class="field css-gzip-level"{if !$settings.css_gzip|default:''} style="display:none"{/if}>
+                                <div class="name">Уровень сжатия</div>
+                                <div class="value">
+                                    <input class="short numerical" type="number" min="0" max="9" name="settings[css_gzip_level]" value="{$settings.css_gzip_level|default:'0'|escape}">
+                                    <p class="hint">
+                                        Уровень GZip-сжатия<br/>
+                                        0 - без сжатия, 9 - максимальное сжатие. 
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <div class="name">Загрузка</div>
+                                <div class="value no-shift s-ibutton-checkbox">
+                                    <input type="hidden" name="settings[css_download_remote_files]" value="0">
+                                    <input class="ibutton" type="checkbox" name="settings[css_download_remote_files]" value="1"{if $settings.css_download_remote_files|default:''} checked{/if} >
+                                    <p class="hint">Загрузка CSS-файлов со сторонних сайтов на локальный сервер и их последующая минимизация</p>
+                                </div>
+                            </div>
+                            <div class="field css-update-time-remote-files"{if !$settings.css_download_remote_files|default:''} style="display:none"{/if}>
+                                <div class="name">Период обновления</div>
+                                <div class="value">
+                                    <input class="short numerical" type="number" min="0" name="settings[css_update_time_remote_files]" value="{$settings.css_update_time_remote_files|default:''|escape}"> сек
+                                    <p class="hint">
+                                        Время в секундах, через которое CSS-файлов со сторонних сайтов будут загружаться повторно тем самым их актуальность будет обновляться<br/>
+                                        <strong>3600</strong> сек = 1 часа; <strong>86400</strong> сек = 24 часа; <strong>2592000</strong> сек = 30 дней
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="field">
+                                <div class="name">Обработка CSS в HTML-коде</div>
+                                <div class="value no-shift s-ibutton-checkbox">
+                                    <input type="hidden" name="settings[css_inline]" value="0">
+                                    <input class="ibutton" type="checkbox" name="settings[css_inline]" value="1"{if $settings.css_inline|default:''} checked{/if} >
+                                    <p class="hint">
+                                        CSS-стили могут размещаться непосредственно в HTML-коде страницы, а не в отдельных CSS-файлах.<br/>
+                                        После обработки такие стили будут помещены в отдельные CSS-файлы, к которым в дальнейшем будут применены, в соответствие с настройками, методы минимизации и сжатия 
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="field">
+                                <div class="name">Объединение</div>
+                                <div class="value no-shift s-ibutton-checkbox">
+                                    <input type="hidden" name="settings[css_merge]" value="0">
+                                    <input class="ibutton" type="checkbox" name="settings[css_merge]" value="1"{if $settings.css_merge|default:''} checked{/if} >
+                                    <p class="hint">Объединение всех CSS-файлов в один. Позволяет уменьшить число запросов к серверу и сократить HTML-код</p>
+                                </div>
+                            </div>
+
+                            <div class="field">
+                                <div class="name">Перенос стилей в конец страницы</div>
+                                <div class="value no-shift s-ibutton-checkbox">
+                                    <input type="hidden" name="settings[css_move]" value="0">
+                                    <input class="ibutton" type="checkbox" name="settings[css_move]" value="1"{if $settings.css_move|default:''} checked{/if} >
+                                    <p class="hint">
+                                        Перенос всех CSS-файлов в конец HTML-страницы, резмещение перед тегом &lt;/body&gt;.<br/>
+                                        Таким образом CSS-файлы загружаются в последнюю очередь и не препятствуют загрузке основного кода HTML-страницы.<br/>
+                                        Выполнение рекомендации Google «Удалите код JavaScript и CSS, блокирующий отображение верхней части страницы»
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <div class="name">Кеш браузера</div>
+                                <div class="value no-shift s-ibutton-checkbox">
+                                    <input type="hidden" name="settings[css_browser_cache]" value="0">
+                                    <input class="ibutton" type="checkbox" name="settings[css_browser_cache]" value="1"{if $settings.css_browser_cache|default:''} checked{/if} >
+                                    <p class="hint">Включение кеша браузера</p>
+                                </div>
+                            </div>
+                            <div class="field"{if !$settings.css_browser_cache|default:''} style="display:none"{/if}>
+                                <div class="name">Время кеширования</div>
+                                <div class="value">
+                                    <input class="short numerical" type="number" min="0" name="settings[css_browser_cache_time]" value="{$settings.css_browser_cache_time|default:''|escape}"> сек
+                                    <p class="hint">
+                                        Время в секундах, на которое устанавливается кеш в браузере<br/>
+                                        <strong>3600</strong> сек = 1 часа; <strong>86400</strong> сек = 24 часа; <strong>2592000</strong> сек = 30 дней
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="field">
-                    <div class="name">Максимальный размер импортируемых файлов</div>
-                    <div class="value">
-                        <input class="short numerical" type="number" min="0" name="settings[css_max_import_size]" value="{$settings.css_max_import_size|default:'0'|escape}"> КБайт
-                        <p class="hint">
-                            Если в CSS используются изображения небольшого размера (или файлы других типов, например, шрифты), то их лучше импортировать непосредственно в CSS-файл.<br/> 
-                            Импорт каждого изображения позволяет сократить количество запросов к серверу на получение изображений.<br/>
-                            Однако очень большие изображения могут существенно увеличить размер CSS-файла, что может оказать негативное влияние.<br/>
-                            0 - файлы не импортируются, рекомендуемый размер <strong>10</strong> КБайт
-                        </p>
-                    </div>
-                </div>
-                <div class="field">
-                    <div class="name">GZip-сжатие</div>
-                    <div class="value no-shift s-ibutton-checkbox">
-                        <input type="hidden" name="settings[css_gzip]" value="0">
-                        <input class="ibutton" type="checkbox" name="settings[css_gzip]" value="1"{if $settings.css_gzip|default:''} checked{/if} >
-                        <p class="hint">Использовать программную функцию сжатия gzip</p>
-                    </div>
-                </div>
-                <div class="field css-gzip-level"{if !$settings.css_gzip|default:''} style="display:none"{/if}>
-                    <div class="name">Уровень сжатия</div>
-                    <div class="value">
-                        <input class="short numerical" type="number" min="0" max="9" name="settings[css_gzip_level]" value="{$settings.css_gzip_level|default:'0'|escape}">
-                        <p class="hint">
-                            Уровень GZip-сжатия<br/>
-                            0 - без сжатия, 9 - максимальное сжатие. 
-                        </p>
-                    </div>
-                </div>
-                <div class="field">
-                    <div class="name">Загрузка</div>
-                    <div class="value no-shift s-ibutton-checkbox">
-                        <input type="hidden" name="settings[css_download_remote_files]" value="0">
-                        <input class="ibutton" type="checkbox" name="settings[css_download_remote_files]" value="1"{if $settings.css_download_remote_files|default:''} checked{/if} >
-                        <p class="hint">Загрузка CSS-файлов со сторонних сайтов на локальный сервер и их последующая минимизация</p>
-                    </div>
-                </div>
-                <div class="field css-update-time-remote-files"{if !$settings.css_download_remote_files|default:''} style="display:none"{/if}>
-                    <div class="name">Период обновления</div>
-                    <div class="value">
-                        <input class="short numerical" type="number" min="0" name="settings[css_update_time_remote_files]" value="{$settings.css_update_time_remote_files|default:''|escape}"> сек
-                        <p class="hint">
-                            Время в секундах, через которое CSS-файлов со сторонних сайтов будут загружаться повторно тем самым их актуальность будет обновляться<br/>
-                            <strong>3600</strong> сек = 1 часа; <strong>86400</strong> сек = 24 часа; <strong>2592000</strong> сек = 30 дней
-                        </p>
+                <div id="pagespeed-js-content" class="tab-content s-dropdown-content">
+                    <div class="fields">
+                        <div class="field-group" {if !$settings.status|default:''} style="display:none"{/if}>
+                            <div class="field">
+                                <div class="name">Минимизация</div>
+                                <div class="value no-shift s-ibutton-checkbox">
+                                    <input type="hidden" name="settings[js_minify]" value="0">
+                                    <input class="ibutton" type="checkbox" name="settings[js_minify]" value="1"{if $settings.js_minify|default:''} checked{/if} >
+                                    <p class="hint">Сжатие JS-файлов путем приведения кода к более компактному виду: удаление лишних строк, пробелов, использование сокращенных выражений, удаление пустых правил и пр.</p>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <div class="name">GZip-сжатие</div>
+                                <div class="value no-shift s-ibutton-checkbox">
+                                    <input type="hidden" name="settings[js_gzip]" value="0">
+                                    <input class="ibutton" type="checkbox" name="settings[js_gzip]" value="1"{if $settings.js_gzip|default:''} checked{/if} >
+                                    <p class="hint">Использовать программную функцию сжатия gzip</p>
+                                </div>
+                            </div>
+                            <div class="field js-gzip-level"{if !$settings.js_gzip|default:''} style="display:none"{/if}>
+                                <div class="name">Уровень сжатия</div>
+                                <div class="value">
+                                    <input class="short numerical" type="number" min="0" max="9" name="settings[js_gzip_level]" value="{$settings.js_gzip_level|default:'0'|escape}">
+                                    <p class="hint">
+                                        Уровень GZip-сжатия<br/>
+                                        0 - без сжатия, 9 - максимальное сжатие. 
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <div class="name">Загрузка</div>
+                                <div class="value no-shift s-ibutton-checkbox">
+                                    <input type="hidden" name="settings[js_download_remote_files]" value="0">
+                                    <input class="ibutton" type="checkbox" name="settings[js_download_remote_files]" value="1"{if $settings.js_download_remote_files|default:''} checked{/if} >
+                                    <p class="hint">Загрузка JS-файлов со сторонних сайтов на локальный сервер и их последующая минимизация</p>
+                                </div>
+                            </div>
+                            <div class="field css-update-time-remote-files"{if !$settings.js_download_remote_files|default:''} style="display:none"{/if}>
+                                <div class="name">Период обновления</div>
+                                <div class="value">
+                                    <input class="short numerical" type="number" min="0" name="settings[js_update_time_remote_files]" value="{$settings.js_update_time_remote_files|default:''|escape}"> сек
+                                    <p class="hint">
+                                        Время в секундах, через которое JS-файлов со сторонних сайтов будут загружаться повторно тем самым их актуальность будет обновляться<br/>
+                                        <strong>3600</strong> сек = 1 часа; <strong>86400</strong> сек = 24 часа; <strong>2592000</strong> сек = 30 дней
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <div class="name">Обработка JS в HTML-коде</div>
+                                <div class="value no-shift s-ibutton-checkbox">
+                                    <input type="hidden" name="settings[js_inline]" value="0">
+                                    <input class="ibutton" type="checkbox" name="settings[js_inline]" value="1"{if $settings.js_inline|default:''} checked{/if} >
+                                    <p class="hint">
+                                        JS-код может размещаться непосредственно в HTML-коде страницы, а не в отдельных JS-файлах.<br/>
+                                        После обработки такой код будут помещен в отдельные JS-файлы, к которым в дальнейшем будут применены, в соответствие с настройками, методы минимизации и сжатия 
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <div class="name">Объединение</div>
+                                <div class="value no-shift s-ibutton-checkbox">
+                                    <input type="hidden" name="settings[js_merge]" value="0">
+                                    <input class="ibutton" type="checkbox" name="settings[js_merge]" value="1"{if $settings.js_merge|default:''} checked{/if} >
+                                    <p class="hint">Объединение всех JS-файлов в один. Позволяет уменьшить число запросов к серверу и сократить HTML-код</p>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <div class="name">Перенос скриптов в конец страницы</div>
+                                <div class="value no-shift s-ibutton-checkbox">
+                                    <input type="hidden" name="settings[js_move]" value="0">
+                                    <input class="ibutton" type="checkbox" name="settings[js_move]" value="1"{if $settings.js_move|default:''} checked{/if} >
+                                    <p class="hint">
+                                        Перенос всех JS-файлов в конец HTML-страницы, резмещение перед тегом &lt;/body&gt;.<br/>
+                                        Таким образом JS-файлы загружаются в последнюю очередь и не препятствуют загрузке основного кода HTML-страницы.<br/>
+                                        Выполнение рекомендации Google «Удалите код JavaScript и CSS, блокирующий отображение верхней части страницы»
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <div class="name">Кеш браузера</div>
+                                <div class="value no-shift s-ibutton-checkbox">
+                                    <input type="hidden" name="settings[js_browser_cache]" value="0">
+                                    <input class="ibutton" type="checkbox" name="settings[js_browser_cache]" value="1"{if $settings.js_browser_cache|default:''} checked{/if} >
+                                    <p class="hint">Включение кеша браузера</p>
+                                </div>
+                            </div>
+                            <div class="field"{if !$settings.js_browser_cache|default:''} style="display:none"{/if}>
+                                <div class="name">Время кеширования</div>
+                                <div class="value">
+                                    <input class="short numerical" type="number" min="0" name="settings[js_browser_cache_time]" value="{$settings.js_browser_cache_time|default:''|escape}"> сек
+                                    <p class="hint">
+                                        Время в секундах, на которое устанавливается кеш в браузере<br/>
+                                        <strong>3600</strong> сек = 1 часа; <strong>86400</strong> сек = 24 часа; <strong>2592000</strong> сек = 30 дней
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="field">
-                    <div class="name">Обработка CSS в HTML-коде</div>
-                    <div class="value no-shift s-ibutton-checkbox">
-                        <input type="hidden" name="settings[css_inline]" value="0">
-                        <input class="ibutton" type="checkbox" name="settings[css_inline]" value="1"{if $settings.css_inline|default:''} checked{/if} >
-                        <p class="hint">
-                            CSS-стили могут размещаться непосредственно в HTML-коде страницы, а не в отдельных CSS-файлах.<br/>
-                            После обработки такие стили будут помещены в отдельные CSS-файлы, к которым в дальнейшем будут применены, в соответствие с настройками, методы минимизации и сжатия 
-                        </p>
+                <div id="pagespeed-html-content" class="tab-content s-dropdown-content">
+                    <div class="fields">
+                        <div class="field-group" {if !$settings.status|default:''} style="display:none"{/if}>
+                            <h3>Оптимизация HTML</h3>
+                            <div class="field">
+                                <div class="name">Минимизация</div>
+                                <div class="value no-shift s-ibutton-checkbox">
+                                    <input type="hidden" name="settings[html_minify]" value="0">
+                                    <input class="ibutton" type="checkbox" name="settings[html_minify]" value="1"{if $settings.html_minify|default:''} checked{/if} >
+                                    <p class="hint">Сжатие HTML-страницы путем приведения кода к более компактному виду: удаление лишних строк, пробелов, комментариев.</p>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <div class="name">GZip-сжатие</div>
+                                <div class="value no-shift s-ibutton-checkbox">
+                                    <input type="hidden" name="settings[html_gzip]" value="0">
+                                    <input class="ibutton" type="checkbox" name="settings[html_gzip]" value="1"{if $settings.html_gzip|default:''} checked{/if} >
+                                    <p class="hint">Использовать программную функцию сжатия gzip</p>
+                                </div>
+                            </div>
+                            <div class="field html-gzip-level"{if !$settings.html_gzip|default:''} style="display:none"{/if}>
+                                <div class="name">Уровень сжатия</div>
+                                <div class="value">
+                                    <input class="short numerical" type="number" min="0" max="9" name="settings[html_gzip_level]" value="{$settings.html_gzip_level|default:'0'|escape}">
+                                    <p class="hint">
+                                        Уровень GZip-сжатия<br/>
+                                        0 - без сжатия, 9 - максимальное сжатие. 
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
-                <div class="field">
-                    <div class="name">Объединение</div>
-                    <div class="value no-shift s-ibutton-checkbox">
-                        <input type="hidden" name="settings[css_merge]" value="0">
-                        <input class="ibutton" type="checkbox" name="settings[css_merge]" value="1"{if $settings.css_merge|default:''} checked{/if} >
-                        <p class="hint">Объединение всех CSS-файлов в один. Позволяет уменьшить число запросов к серверу и сократить HTML-код</p>
-                    </div>
-                </div>
-
-                <div class="field">
-                    <div class="name">Перенос стилей в конец страницы</div>
-                    <div class="value no-shift s-ibutton-checkbox">
-                        <input type="hidden" name="settings[css_move]" value="0">
-                        <input class="ibutton" type="checkbox" name="settings[css_move]" value="1"{if $settings.css_move|default:''} checked{/if} >
-                        <p class="hint">
-                            Перенос всех CSS-файлов в конец HTML-страницы, резмещение перед тегом &lt;/body&gt;.<br/>
-                            Таким образом CSS-файлы загружаются в последнюю очередь и не препятствуют загрузке основного кода HTML-страницы.<br/>
-                            Выполнение рекомендации Google «Удалите код JavaScript и CSS, блокирующий отображение верхней части страницы»
-                        </p>
+                <div id="pagespeed-img-content" class="tab-content s-dropdown-content">
+                    <div class="fields">
+                        <div class="field-group" {if !$settings.status|default:''} style="display:none"{/if}>
+                            <h3>Оптимизация изображений</h3>
+                            <div class="field">
+                                <div class="name">Отложенная загрузка изображений</div>
+                                <div class="value no-shift s-ibutton-checkbox">
+                                    <input type="hidden" name="settings[img_lazyload]" value="0">
+                                    <input class="ibutton" type="checkbox" name="settings[img_lazyload]" value="1"{if $settings.img_lazyload|default:''} checked{/if} >
+                                    <p class="hint">
+                                        Изображения загружаются по мере попадания в область видимости окна браузера, если изображение находится за пределами окна, то оно не загружается.<br/>
+                                        Таким образом если посетитель не долистал страницу до низа, то нет смысла тратить ресурсы и загружать изображения, которых все равно никто не увидет
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <div class="name">Кеш браузера</div>
+                                <div class="value no-shift s-ibutton-checkbox">
+                                    <input type="hidden" name="settings[img_browser_cache]" value="0">
+                                    <input class="ibutton" type="checkbox" name="settings[img_browser_cache]" value="1"{if $settings.img_browser_cache|default:''} checked{/if} >
+                                    <p class="hint">Включение кеша браузера</p>
+                                </div>
+                            </div>
+                            <div class="field"{if !$settings.img_browser_cache|default:''} style="display:none"{/if}>
+                                <div class="name">Время кеширования</div>
+                                <div class="value">
+                                    <input class="short numerical" type="number" min="0" name="settings[img_browser_cache_time]" value="{$settings.img_browser_cache_time|default:''|escape}"> сек
+                                    <p class="hint">
+                                        Время в секундах, на которое устанавливается кеш в браузере<br/>
+                                        <strong>3600</strong> сек = 1 часа; <strong>86400</strong> сек = 24 часа; <strong>2592000</strong> сек = 30 дней
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-
-            <div class="field-group" {if !$settings.status|default:''} style="display:none"{/if}>
-                <h3>Оптимизация JS</h3>
-                <div class="field">
-                    <div class="name">Минимизация</div>
-                    <div class="value no-shift s-ibutton-checkbox">
-                        <input type="hidden" name="settings[js_minify]" value="0">
-                        <input class="ibutton" type="checkbox" name="settings[js_minify]" value="1"{if $settings.js_minify|default:''} checked{/if} >
-                        <p class="hint">Сжатие JS-файлов путем приведения кода к более компактному виду: удаление лишних строк, пробелов, использование сокращенных выражений, удаление пустых правил и пр.</p>
-                    </div>
-                </div>
-                <div class="field">
-                    <div class="name">GZip-сжатие</div>
-                    <div class="value no-shift s-ibutton-checkbox">
-                        <input type="hidden" name="settings[js_gzip]" value="0">
-                        <input class="ibutton" type="checkbox" name="settings[js_gzip]" value="1"{if $settings.js_gzip|default:''} checked{/if} >
-                        <p class="hint">Использовать программную функцию сжатия gzip</p>
-                    </div>
-                </div>
-                <div class="field js-gzip-level"{if !$settings.js_gzip|default:''} style="display:none"{/if}>
-                    <div class="name">Уровень сжатия</div>
-                    <div class="value">
-                        <input class="short numerical" type="number" min="0" max="9" name="settings[js_gzip_level]" value="{$settings.js_gzip_level|default:'0'|escape}">
-                        <p class="hint">
-                            Уровень GZip-сжатия<br/>
-                            0 - без сжатия, 9 - максимальное сжатие. 
-                        </p>
-                    </div>
-                </div>
-                <div class="field">
-                    <div class="name">Загрузка</div>
-                    <div class="value no-shift s-ibutton-checkbox">
-                        <input type="hidden" name="settings[js_download_remote_files]" value="0">
-                        <input class="ibutton" type="checkbox" name="settings[js_download_remote_files]" value="1"{if $settings.js_download_remote_files|default:''} checked{/if} >
-                        <p class="hint">Загрузка JS-файлов со сторонних сайтов на локальный сервер и их последующая минимизация</p>
-                    </div>
-                </div>
-                <div class="field css-update-time-remote-files"{if !$settings.js_download_remote_files|default:''} style="display:none"{/if}>
-                    <div class="name">Период обновления</div>
-                    <div class="value">
-                        <input class="short numerical" type="number" min="0" name="settings[js_update_time_remote_files]" value="{$settings.js_update_time_remote_files|default:''|escape}"> сек
-                        <p class="hint">
-                            Время в секундах, через которое JS-файлов со сторонних сайтов будут загружаться повторно тем самым их актуальность будет обновляться<br/>
-                            <strong>3600</strong> сек = 1 часа; <strong>86400</strong> сек = 24 часа; <strong>2592000</strong> сек = 30 дней
-                        </p>
-                    </div>
-                </div>
-                <div class="field">
-                    <div class="name">Обработка JS в HTML-коде</div>
-                    <div class="value no-shift s-ibutton-checkbox">
-                        <input type="hidden" name="settings[js_inline]" value="0">
-                        <input class="ibutton" type="checkbox" name="settings[js_inline]" value="1"{if $settings.js_inline|default:''} checked{/if} >
-                        <p class="hint">
-                            JS-код может размещаться непосредственно в HTML-коде страницы, а не в отдельных JS-файлах.<br/>
-                            После обработки такой код будут помещен в отдельные JS-файлы, к которым в дальнейшем будут применены, в соответствие с настройками, методы минимизации и сжатия 
-                        </p>
-                    </div>
-                </div>
-                <div class="field">
-                    <div class="name">Объединение</div>
-                    <div class="value no-shift s-ibutton-checkbox">
-                        <input type="hidden" name="settings[js_merge]" value="0">
-                        <input class="ibutton" type="checkbox" name="settings[js_merge]" value="1"{if $settings.js_merge|default:''} checked{/if} >
-                        <p class="hint">Объединение всех JS-файлов в один. Позволяет уменьшить число запросов к серверу и сократить HTML-код</p>
-                    </div>
-                </div>
-                <div class="field">
-                    <div class="name">Перенос скриптов в конец страницы</div>
-                    <div class="value no-shift s-ibutton-checkbox">
-                        <input type="hidden" name="settings[js_move]" value="0">
-                        <input class="ibutton" type="checkbox" name="settings[js_move]" value="1"{if $settings.js_move|default:''} checked{/if} >
-                        <p class="hint">
-                            Перенос всех JS-файлов в конец HTML-страницы, резмещение перед тегом &lt;/body&gt;.<br/>
-                            Таким образом JS-файлы загружаются в последнюю очередь и не препятствуют загрузке основного кода HTML-страницы.<br/>
-                            Выполнение рекомендации Google «Удалите код JavaScript и CSS, блокирующий отображение верхней части страницы»
-                        </p>
-                    </div>
-                </div>
-            </div>
-                        
-            <div class="field-group" {if !$settings.status|default:''} style="display:none"{/if}>
-                <h3>Оптимизация HTML</h3>
-                <div class="field">
-                    <div class="name">Минимизация</div>
-                    <div class="value no-shift s-ibutton-checkbox">
-                        <input type="hidden" name="settings[html_minify]" value="0">
-                        <input class="ibutton" type="checkbox" name="settings[html_minify]" value="1"{if $settings.html_minify|default:''} checked{/if} >
-                        <p class="hint">Сжатие HTML-страницы путем приведения кода к более компактному виду: удаление лишних строк, пробелов, комментариев.</p>
-                    </div>
-                </div>
-            </div>
-
             <div class="field-group"{if !$settings.status|default:''} style="display:none"{/if}>
                 <div class="field">
                     <div class="value submit">

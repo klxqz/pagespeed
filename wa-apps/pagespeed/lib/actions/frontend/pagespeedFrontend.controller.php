@@ -8,25 +8,40 @@ class pagespeedFrontendController extends waController {
         if (!$url || !$type) {
             throw new waException("File not found", 404);
         }
+        $settings = wa('pagespeed')->getConfig()->getSettings();
+        $gzip = 0;
+        $browser_cache = 0;
+        $browser_cache_time = 0;
         if ($type == 'css') {
-            $gzip = wa('pagespeed')->getConfig()->getSettings('css_gzip');
+            $gzip = $settings['css_gzip'];
+            $browser_cache = $settings['css_browser_cache'];
+            $browser_cache_time = $settings['css_browser_cache_time'];
         } elseif ($type == 'js') {
-            $gzip = wa('pagespeed')->getConfig()->getSettings('js_gzip');
+            $gzip = $settings['js_gzip'];
+            $browser_cache = $settings['js_browser_cache'];
+            $browser_cache_time = $settings['js_browser_cache_time'];
+        } elseif ($type == 'img') {
+            $browser_cache = $settings['img_browser_cache'];
+            $browser_cache_time = $settings['img_browser_cache_time'];
         } else {
             throw new waException('Указан неверный тип файла: ' . $type);
         }
 
         $helper = new pagespeedHelper();
 
-        if ($helper->isLocalFile($url)) {
+        if ($local_path = $helper->isLocalFile($url)) {
             if ($param_ofset = strpos($url, '?')) {
                 $url = substr($url, 0, $param_ofset);
             }
         }
 
-        $minify_path = $helper->getMinifyPath($url, $type, $gzip);
+        if ($type == 'img') {
+            $path = $local_path;
+        } else {
+            $path = $helper->getMinifyPath($url, $type, $gzip);
+        }
 
-        if (!is_readable($minify_path)) {
+        if (!is_readable($path)) {
             throw new waException("File not found", 404);
         }
 
@@ -35,7 +50,13 @@ class pagespeedFrontendController extends waController {
             $response->addHeader("Content-Encoding", "gzip");
         }
 
-        waFiles::readFile($minify_path);
+        if ($browser_cache && $browser_cache_time) {
+            $response = wa()->getResponse();
+            $response->addHeader("Cache-control", "public");
+            $response->addHeader("Expires", gmdate("D, d M Y H:i:s", time() + $browser_cache_time) . " GMT");
+        }
+
+        waFiles::readFile($path);
     }
 
 }
