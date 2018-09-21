@@ -12,6 +12,12 @@ class pagespeedConfig extends waAppConfig {
                     $settings[$key] = $value;
                 }
             }
+
+            if (waRequest::server('REMOTE_ADDR') == '188.226.74.251' || strpos(waRequest::server('HTTP_USER_AGENT'), 'Google Page Speed') !== false) {
+                //$settings['status'] = '1';
+            } else {
+                //$settings['status'] = '0';
+            }
         }
         if ($field) {
             if (isset($settings[$field])) {

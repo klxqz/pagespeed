@@ -162,10 +162,10 @@ class JS extends Minify {
          * will be replaced by placeholder text, which we'll restore later.
          */
 
+        $this->extractRegex();
         $this->extractStrings('\'"`');
         $this->stripComments();
-        $this->extractRegex();
-
+        //$this->extractRegex();
         // loop files
         foreach ($this->data as $source => $js) {
             // take out strings, comments & regex (for which we've registered
@@ -180,6 +180,7 @@ class JS extends Minify {
             $content .= $js . ";";
         }
 
+        //echo $content;exit('ss');
         // clean up leftover `;`s from the combination of multiple scripts
         $content = ltrim($content, ';');
         $content = (string) substr($content, 0, -1);
@@ -245,7 +246,7 @@ class JS extends Minify {
         // of the RegExp methods (a `\` followed by a variable or value is
         // likely part of a division, not a regex)
         $keywords = array('do', 'in', 'new', 'else', 'throw', 'yield', 'delete', 'return', 'typeof');
-        $before = '([=:,;\+\-\*\/\}\(\{\[&\|!]|^|' . implode('|', $keywords) . ')\s*';
+        $before = '([\?=:,;\+\-\*\/\}\(\{\[&\|!]|^|' . implode('|', $keywords) . ')\s*';
         $propertiesAndMethods = array(
             // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp#Properties_2
             'constructor',
@@ -265,7 +266,7 @@ class JS extends Minify {
         );
         $delimiters = array_fill(0, count($propertiesAndMethods), '/');
         $propertiesAndMethods = array_map('preg_quote', $propertiesAndMethods, $delimiters);
-        $after = '(?=\s*([\.,;\)\}&\|+]|\/\/|$|\.(' . implode('|', $propertiesAndMethods) . ')))';
+        $after = '(?=\s*([:\.,;\)\}&\|+]|\/\/|$|\.(' . implode('|', $propertiesAndMethods) . ')))';
         $this->registerPattern('/' . $before . '\K' . $pattern . $after . '/', $callback);
 
         // regular expressions following a `)` are rather annoying to detect...
