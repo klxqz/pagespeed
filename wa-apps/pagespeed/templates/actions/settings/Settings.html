@@ -15,22 +15,26 @@
             </div>
 
 
-            <div id="pagespeed-tabs-block" >
+            <div id="pagespeed-tabs-block" {if !$settings.status|default:''} style="display:none"{/if}>
                 <ul class="tabs">
                     <li id="pagespeed-css" class="selected"><a href="#">Оптимизация CSS</a></li>
                     <li id="pagespeed-js" class=""><a href="#">Оптимизация JS</a></li>
                     <li id="pagespeed-html" class=""><a href="#">Оптимизация HTML</a></li>
                     <li id="pagespeed-img" class=""><a href="#">Оптимизация изображений</a></li>
+                    <li id="pagespeed-dev" class=""><a href="#">Режим разработчика</a></li>
                 </ul>
-                <div id="pagespeed-css-content" class="tab-content s-dropdown-content">
+                <div id="pagespeed-css-content" class="tab-content">
                     <div class="fields">
-                        <div class="field-group" {if !$settings.status|default:''} style="display:none"{/if}>
+                        <div class="field-group" >
                             <div class="field">
                                 <div class="name">Минимизация</div>
                                 <div class="value no-shift s-ibutton-checkbox">
                                     <input type="hidden" name="settings[css_minify]" value="0">
                                     <input class="ibutton" type="checkbox" name="settings[css_minify]" value="1"{if $settings.css_minify|default:''} checked{/if} >
-                                    <p class="hint">Сжатие CSS-файлов путем приведения кода к более компактному виду: удаление лишних строк, пробелов, использование сокращенных выражений, удаление пустых правил и пр.</p>
+                                    <p class="hint">
+                                        Сжатие CSS-файлов путем приведения кода к более компактному виду: удаление лишних строк, пробелов, использование сокращенных выражений, удаление пустых правил и пр.<br/>
+                                        Используйте атрибут <strong>data-disabled-minify="true"</strong>, чтобы запретить минимизацию для выбранных стилей
+                                    </p>
                                 </div>
                             </div>
                             <div class="field">
@@ -136,9 +140,9 @@
                         </div>
                     </div>
                 </div>
-                <div id="pagespeed-js-content" class="tab-content s-dropdown-content">
+                <div id="pagespeed-js-content" class="tab-content">
                     <div class="fields">
-                        <div class="field-group" {if !$settings.status|default:''} style="display:none"{/if}>
+                        <div class="field-group">
                             <div class="field">
                                 <div class="name">Минимизация</div>
                                 <div class="value no-shift s-ibutton-checkbox">
@@ -236,9 +240,9 @@
                     </div>
                 </div>
 
-                <div id="pagespeed-html-content" class="tab-content s-dropdown-content">
+                <div id="pagespeed-html-content" class="tab-content">
                     <div class="fields">
-                        <div class="field-group" {if !$settings.status|default:''} style="display:none"{/if}>
+                        <div class="field-group">
                             <h3>Оптимизация HTML</h3>
                             <div class="field">
                                 <div class="name">Минимизация</div>
@@ -269,10 +273,9 @@
                         </div>
                     </div>
                 </div>
-                <div id="pagespeed-img-content" class="tab-content s-dropdown-content">
+                <div id="pagespeed-img-content" class="tab-content">
                     <div class="fields">
-                        <div class="field-group" {if !$settings.status|default:''} style="display:none"{/if}>
-                            <h3>Оптимизация изображений</h3>
+                        <div class="field-group">
                             <div class="field">
                                 <div class="name">Отложенная загрузка изображений</div>
                                 <div class="value no-shift s-ibutton-checkbox">
@@ -300,6 +303,50 @@
                                         Время в секундах, на которое устанавливается кеш в браузере<br/>
                                         <strong>3600</strong> сек = 1 часа; <strong>86400</strong> сек = 24 часа; <strong>2592000</strong> сек = 30 дней
                                     </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="pagespeed-dev-content" class="tab-content">
+                    <div class="fields">
+                        <div class="field-group">
+                            <div class="field">
+                                <div class="name">Отладочный режим</div>
+                                <div class="value no-shift s-ibutton-checkbox">
+                                    <input type="hidden" name="settings[debug_mode]" value="0">
+                                    <input class="ibutton" type="checkbox" name="settings[debug_mode]" value="1"{if $settings.debug_mode|default:''} checked{/if} >
+                                    <p class="hint">
+                                        Приложение работает в ограниченном режиме, только для указанных ниже пользователей, для остальных сайт будет работать без оптимизации
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="field"{if !$settings.debug_mode|default:''} style="display:none"{/if}>
+                                <div class="name">Список IP-адресов</div>
+                                <div class="value">
+                                    <textarea name="settings[debug_ip_list]">{$settings.debug_ip_list|default:''|escape}</textarea>
+                                    <p class="hint">
+                                        Список IP-адресов, для которых приложение работает в режиме отладки<br/>
+                                        Каждый адрес с новой строки
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="field"{if !$settings.debug_mode|default:''} style="display:none"{/if}>
+                                <div class="name">Список User agent</div>
+                                <div class="value">
+                                    <textarea name="settings[debug_user_agent]">{$settings.debug_user_agent|default:''|escape}</textarea>
+                                    <p class="hint">
+                                        Список User agent, для которых приложение работает в режиме отладки<br/>
+                                        Каждый агент с новой строки
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <div class="name">Отправка gzip заголовка</div>
+                                <div class="value no-shift s-ibutton-checkbox">
+                                    <input type="hidden" name="settings[debug_html_gzip]" value="0">
+                                    <input class="ibutton" type="checkbox" name="settings[debug_html_gzip]" value="1"{if $settings.debug_html_gzip|default:''} checked{/if} >
+                                    <p class="hint">При возникновение "ошибка в типе содержимого" или ERR_CONTENT_DECODING_FAILED</p>
                                 </div>
                             </div>
                         </div>

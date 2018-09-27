@@ -107,11 +107,11 @@ abstract class Minify {
      *
      * @return string The minified data
      */
-    public function minify($path = null) {
-        $content = $this->execute($path);
+    public function minify($path = null, $no_save = false, $is_root_dir = false) {
+        $content = $this->execute($path, array(), $is_root_dir);
 
         // save to path
-        if ($path !== null) {
+        if ($path !== null && !$no_save) {
             $this->save($content, $path);
         }
 
@@ -384,7 +384,7 @@ abstract class Minify {
             // nothing was extracted, nothing to restore
             return $content;
         }
-        
+
         $content = strtr($content, $this->extracted);
 
         $this->extracted = array();

@@ -29,4 +29,8 @@ return array(
     'img_lazyload' => '1',
     'img_browser_cache' => '1',
     'img_browser_cache_time' => '2592000',
+    'debug_mode' => '0',
+    'debug_ip_list' => '',
+    'debug_user_agent' => 'Google Page Speed',
+    'debug_html_gzip' => '1',
 );

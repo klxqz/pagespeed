@@ -68,6 +68,12 @@
         defaultAction: function () {
             window.location.href = '#/settings/';
         },
+        imageAction: function (id) {
+            var self = this;
+            $("#content").load('?module=image', function () {
+              
+            });
+        },
         settingsAction: function (id) {
             var self = this;
             $("#content").load('?module=settings', function () {

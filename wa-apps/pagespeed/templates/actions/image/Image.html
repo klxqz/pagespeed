@@ -1,0 +1,57 @@
+<div class="block double-padded">
+    <form id="s-plugin-imgimport-import" method="post" action="?module=image&action=run">
+
+        {*
+        {foreach $routes as $r}
+            <div>
+                <img src="{$wa_url}wa-apps/{$r.app}/img/{$r.app}24.png" />{$r.url}
+            </div>
+        {/foreach}
+        *}
+
+        <div class="field">
+            <div class="name">Страницы для обработки</div>
+            <div class="value">
+                <textarea name="settings[urls]">http://dev.wa-plugins.ru/</textarea>
+            </div>
+        </div>
+
+        <div class="field-group" id="plugin-imgimport-submit">
+            <div class="submit">
+                <input type="submit" class="button green" value="Импортировать">
+                <div class="js-progressbar-container" style="display:none;">
+                    <div class="progressbar blue float-left" style="display: none; width: 70%;">
+                        <div class="progressbar-outer">
+                            <div class="progressbar-inner" style="width: 0;"></div>
+                        </div>
+                    </div>
+                    <img style="float:left; margin-top:8px;" src="{$wa_url}wa-content/img/loading32.gif"/>
+
+                    <div class="clear"></div>
+                    <span class="progressbar-description"></span>
+                    <br style="clear:left;"/>
+                    <br>
+                    <span class="small italic">
+                        Не закрывайте окно браузера и не покидайте страницу до тех пор, пока процесс синхронизации не будет завершен
+                    </span>
+                </div>
+                <br><br>
+                <em class="errormsg"></em>
+            </div>
+        </div>
+        <div class="field-group" id="plugin-imgimport-report" style="display: none;"></div>
+    </form>
+    <div class="clear-both"></div>
+</div>
+
+
+<script type="text/javascript">
+
+    if ($.images) {
+        $.images.init();
+    } else {
+        $.getScript('{$wa_app_static_url}js/images.js', function () {
+            $.images.init();
+        });
+    }
+</script>
