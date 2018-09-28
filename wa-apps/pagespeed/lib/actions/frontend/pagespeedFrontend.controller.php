@@ -27,9 +27,7 @@ class pagespeedFrontendController extends waController {
             throw new waException('Указан неверный тип файла: ' . $type);
         }
 
-        $helper = new pagespeedHelper();
-
-        if ($local_path = $helper->isLocalFile($url)) {
+        if ($local_path = pagespeedOptimizer::isLocalFile($url)) {
             if ($param_ofset = strpos($url, '?')) {
                 $url = substr($url, 0, $param_ofset);
             }
@@ -38,7 +36,7 @@ class pagespeedFrontendController extends waController {
         if ($type == 'img') {
             $path = $local_path;
         } else {
-            $path = $helper->getMinifyPath($url, $type, $gzip);
+            $path = pagespeedOptimizer::getMinifyPath($url, $type, $gzip);
         }
 
         if (!is_readable($path)) {
