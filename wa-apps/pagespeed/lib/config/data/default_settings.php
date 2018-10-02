@@ -11,6 +11,7 @@ return array(
     'css_inline' => '1',
     'css_merge' => '1',
     'css_move' => '1',
+    'css_preloader' => '0',
     'css_browser_cache' => '1',
     'css_browser_cache_time' => '2592000',
     'js_minify' => '1',

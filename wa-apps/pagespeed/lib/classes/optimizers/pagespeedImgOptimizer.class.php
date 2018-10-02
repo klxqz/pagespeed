@@ -11,51 +11,46 @@ class pagespeedImgOptimizer extends pagespeedOptimizer {
         $this->lazyload_js = wa()->getAppStaticUrl('pagespeed') . 'js/jquery.lazyload.js?' . wa('pagespeed')->getConfig()->getInfo('version');
     }
 
+    protected function buildReplacements($matches) {
+        $this->replacements = array();
+        foreach ($matches[0] as $index => $search) {
+            $this->replacements[$search] = array(
+                'replace' => $search,
+                'data' => array(
+                    'src' => $matches[1][$index],
+                    'url' => $matches[2][$index],
+                ),
+            );
+        }
+    }
+
+    protected function updateReplacement(&$replacement, $replace) {
+        $replacement['replace'] = $replace;
+    }
+
     public function execute($html) {
+        $matches = $this->search($html, "/<img[^>]*(src\s*=\s*[\"']([^\"']+)[\"'])[^>]*>/si");
+
         if ($this->settings['lazyload']) {
-            $html = $this->setRegexCallback("/<img[^>]*(src\s*=\s*[\"']([^\"']+)[\"'])[^>]*>/si", $html, 'imgRegexLazyLoad');
-            $append_html = '<script type="text/javascript" src="' . $this->lazyload_js . '"></script>';
-            $html = preg_replace("/(<\/body>)/is", "{$append_html}\n$1", $html);
+            foreach ($this->replacements as &$replacement) {
+                if ($this->settings['browser_cache']) {
+                    $new_src = 'src="' . self::makeUrl($this->lazyload_img, 'img') . '" data-original="' . self::makeUrl($replacement['data']['url'], 'img') . '"';
+                } else {
+                    $new_src = 'src="' . $this->lazyload_img . '" data-original="' . $replacement['data']['url'] . '"';
+                }
+                $replace = str_replace($replacement['data']['src'], $new_src, $replacement['replace']);
+                $this->updateReplacement($replacement, $replace);
+            }
+            $this->append(self::BODY_CLOSE, 'script', $this->lazyload_js);
         }
 
         if ($this->settings['browser_cache'] && !$this->settings['lazyload']) {
-            $html = $this->setRegexCallback("/<img[^>]*src\s*=\s*[\"']([^\"']+)[\"'][^>]*>/si", $html, 'imgRegexBrowserCache');
+            foreach ($this->replacements as &$replacement) {
+                $url = $replacement['data']['url'];
+                $new_url = self::makeUrl($url, 'img');
+                $this->updateReplacement($replacement, str_replace($url, $new_url, $replacement['replace']));
+            }
         }
-
-        if ($this->settings['browser_cache']) {
-            $html = $this->setRegexCallback("/url\([\"']?(.*?)[\"']?\)/si", $html, 'imgRegexUrl');
-        }
-
-        return $html;
-    }
-
-    protected function imgRegexLazyLoad($match) {
-        $img = $match[0][0];
-        $src_attr = $match[1][0];
-        $original_url = $match[2][0];
-
-        if ($this->settings['browser_cache']) {
-            $new_src = 'src="' . self::makeUrl($this->lazyload_img, 'img') . '" data-original="' . self::makeUrl($original_url, 'img') . '"';
-        } else {
-            $new_src = 'src="' . $this->lazyload_img . '" data-original="' . $original_url . '"';
-        }
-        return str_replace($src_attr, $new_src, $img);
-    }
-
-    protected function imgRegexBrowserCache($match) {
-
-        $src = $match[1][0];
-        $url = self::makeUrl($src, 'img');
-        return str_replace($src, $url, $match[0][0]);
-    }
-
-    protected function imgRegexUrl($match) {
-        $src = $match[1][0];
-        if (strpos($src, 'data:image') !== false) {
-            return false;
-        }
-        $url = self::makeUrl($src, 'img');
-        return str_replace($src, $url, $match[0][0]);
     }
 
 }

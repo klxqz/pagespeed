@@ -39,7 +39,7 @@ class pagespeedFrontendController extends waController {
             $path = pagespeedOptimizer::getMinifyPath($url, $type, $gzip);
         }
 
-        if (!is_readable($path)) {
+        if (!file_exists($path)) {
             throw new waException("File not found", 404);
         }
 

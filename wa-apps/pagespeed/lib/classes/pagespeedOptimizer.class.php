@@ -14,9 +14,17 @@ use MatthiasMullie\Minify;
 
 abstract class pagespeedOptimizer {
 
+    protected $search_pattern = '';
     protected $type;
     protected $settings = array();
     protected $merge_list = array();
+    protected $replacements = array();
+    protected static $appends = array();
+
+    const HEAD_OPEN = 'after_open_head';
+    const HEAD_CLOSE = 'before_close_head';
+    const BODY_OPEN = 'after_open_body';
+    const BODY_CLOSE = 'before_close_body';
 
     public function __construct($settings) {
         $class_name = get_class($this);
@@ -27,21 +35,105 @@ abstract class pagespeedOptimizer {
         $this->settings = $settings;
     }
 
-    protected function regexMerge($match) {
-        try {
+    public function getType() {
+        return $this->type;
+    }
 
-            $pagespeed_url = str_replace('/', '\/', wa()->getRouteUrl('pagespeed/frontend'));
-            if (!preg_match("/" . $pagespeed_url . "\?url=([^&]*)&type=([^&]*)/si", $match[1][0], $params)) {
-                return false;
+    public static function getAppends() {
+        return self::$appends;
+    }
+
+    public function append($place = self::HEAD_CLOSE, $tag, $url = null, $content = null) {
+
+        switch ($tag) {
+            case 'link':
+                $html = '<link href="' . $url . '" rel="stylesheet" type="text/css"/>';
+                break;
+            case 'style':
+                $html = "<style>" . $content . "</style>";
+                break;
+            case 'script':
+                if ($url) {
+                    $html = "<script type=\"text/javascript\" src=\"" . $url . "\"></script>";
+                } else {
+                    $html = "<script type=\"text/javascript\">" . $content . "</script>";
+                }
+                break;
+
+            default:
+                $html = $tag;
+                $tag = '';
+                break;
+        }
+
+        self::$appends[] = array(
+            'html' => $html,
+            'tag' => $tag,
+            'url' => $url,
+            'content' => $content,
+            'place' => $place,
+            'optimizer' => $this->type,
+        );
+    }
+
+
+
+    public function replace($html) {
+        foreach ($this->replacements as $search => $replacement) {
+            if ($search != $replacement['replace']) {
+                $html = str_replace($search, $replacement['replace'], $html);
             }
+        }
+        return $html;
+    }
+
+    public function search($html, $pattern = null) {
+        if ($this->search_pattern && !$pattern) {
+            $pattern = $this->search_pattern;
+        }
+        if (!$pattern) {
+            return false;
+        }
+        $data = array();
+        if (preg_match_all($pattern, $html, $matches)) {
+            foreach ($matches[0] as $index => $match) {
+                if (!method_exists($this, 'searchFilter') || $this->searchFilter($match)) {
+                    for ($i = 0; $i < count($matches); $i++) {
+                        $data[$i][] = $matches[$i][$index];
+                    }
+                }
+            }
+        }
+        if ($data) {
+            $this->buildReplacements($data);
+        }
+        return $data;
+    }
+
+    protected function buildReplacements($matches) {
+        $this->replacements = array();
+        foreach ($matches[0] as $index => $search) {
+            $this->replacements[$search] = array(
+                'replace' => $search,
+                'data' => array(),
+            );
+            for ($i = 0; $i < count($matches); $i++) {
+                $this->replacements[$search]['data'][$i] = $matches[$i][$index];
+            }
+        }
+    }
+
+    protected function merge() {
+        $pagespeed_url = str_replace('/', '\/', wa()->getRouteUrl('pagespeed/frontend'));
+        foreach ($this->replacements as &$replacement) {
+            if (!$replacement['replace']) {
+                continue;
+            }
+            if (!preg_match("/" . $pagespeed_url . "\?url=([^&]*)&type=([^&]*)/si", $replacement['data']['url'], $params)) {
+                continue;
+            }
+
             list($link, $url, $type) = $params;
-
-            if (!$url || !$type) {
-                return false;
-            }
-            if ($type != $this->type) {
-                throw new waException('Указан неверный тип файла: ' . $type);
-            }
 
             $url = urldecode($url);
 
@@ -52,16 +144,11 @@ abstract class pagespeedOptimizer {
             }
 
             $minify_path = self::getMinifyPath($url, $type);
-            if (!file_exists($minify_path)) {
-                return false;
+            if (file_exists($minify_path)) {
+                $hash = self::fileHash($minify_path);
+                $this->merge_list[$hash] = $minify_path;
+                $this->updateReplacement($replacement);
             }
-            $hash = self::fileHash($minify_path);
-
-            $this->merge_list[$hash] = $minify_path;
-            return '';
-        } catch (Exception $ex) {
-            self::log($ex->getMessage());
-            return false;
         }
     }
 
@@ -93,34 +180,6 @@ abstract class pagespeedOptimizer {
             @fclose($handler);
         }
         return self::makeUrl($name, $this->type);
-    }
-
-    protected function setRegexCallback($pattern, $content, $method_name, $params = null) {
-        $processed = '';
-        do {
-            $match = null;
-            if (preg_match($pattern, $content, $match, PREG_OFFSET_CAPTURE)) {
-                $text = $match[0][0];
-                $offset = $match[0][1];
-                //$start = $offset + strlen($text);
-                if (!method_exists($this, $method_name)) {
-                    throw new waException(sprintf('Метод %s->%s() не существует', get_class($this), $method_name));
-                }
-                if (($replacement = $this->$method_name($match, $params)) !== false) {
-                    $processed .= substr($content, 0, $offset);
-                    $processed .= $replacement;
-                } else {
-                    $processed .= substr($content, 0, $offset);
-                    $processed .= $text;
-                }
-
-                $content = substr($content, $offset + strlen($text));
-            } else {
-                $processed .= $content;
-            }
-        } while ($match);
-
-        return $processed;
     }
 
     protected function getMinifyUrl($url, $type, $is_content = false) {

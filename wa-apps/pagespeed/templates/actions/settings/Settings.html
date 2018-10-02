@@ -120,6 +120,17 @@
                                 </div>
                             </div>
                             <div class="field">
+                                <div class="name">Добавить код PreLoader</div>
+                                <div class="value no-shift s-ibutton-checkbox">
+                                    <input type="hidden" name="settings[css_preloader]" value="0">
+                                    <input class="ibutton" type="checkbox" name="settings[css_preloader]" value="1"{if $settings.css_preloader|default:''} checked{/if} >
+                                    <p class="hint">
+                                        Добавление кода прелоадера. Может понадобится при переносе стилей в конец страницы.<br/>
+                                        Прелоадер показывается во время загрузки страницы
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="field">
                                 <div class="name">Кеш браузера</div>
                                 <div class="value no-shift s-ibutton-checkbox">
                                     <input type="hidden" name="settings[css_browser_cache]" value="0">

@@ -3,12 +3,12 @@
 class pagespeed {
 
     protected $settings;
-    protected $optimizer;
+    protected $optimizers;
     protected static $inited = false;
 
     public function __construct() {
         $this->settings = wa('pagespeed')->getConfig()->getSettings();
-        $this->optimizer = new pagespeedOptimizers($this->settings);
+        $this->optimizers = new pagespeedOptimizers($this->settings);
     }
 
     public static function init() {
@@ -28,7 +28,7 @@ class pagespeed {
             ) {
                 if (!(wa('pagespeed')->getConfig()->getSettings('debug_mode') && !wa('pagespeed')->getConfig()->getSettings('debug_html_gzip'))) {
                     $response = wa()->getResponse();
-                    $response->addHeader("Content-Encoding", "gzip");
+                    //$response->addHeader("Content-Encoding", "gzip");
                 }
             }
         }
@@ -43,27 +43,32 @@ class pagespeed {
             $start = microtime(true);
         }
 
-        $html = $this->optimizer->html->removeComments($html);
+        $html = $this->optimizers->html->removeComments($html);
+
+        $matches = $this->optimizers->search($html);
+
         if ($this->settings['debug_mode']) {
             $finish_remove_comments = microtime(true) - $start;
         }
 
-        $html = $this->optimizer->css->execute($html);
+        $this->optimizers->css->execute();
         if ($this->settings['debug_mode']) {
             $finish_css = microtime(true) - $start;
         }
-        $html = $this->optimizer->img->execute($html);
+        $this->optimizers->img->execute($html);
         if ($this->settings['debug_mode']) {
             $finish_img = microtime(true) - $start;
         }
-        $html = $this->optimizer->js->execute($html);
+        $this->optimizers->js->execute();
         if ($this->settings['debug_mode']) {
             $finish_js = microtime(true) - $start;
         }
-        $html = $this->optimizer->html->execute($html);
+        //$this->optimizers->html->execute();
         if ($this->settings['debug_mode']) {
             $finish_html = microtime(true) - $start;
         }
+
+        $html = $this->optimizers->replace($html);
 
         if ($this->settings['debug_mode']) {
             $finish = microtime(true) - $start;
@@ -78,7 +83,7 @@ class pagespeed {
 
 
         if ($this->settings['html_gzip']) {
-            $html = $this->optimizer->html->gzipEncode($html);
+            //$html = $this->optimizers->html->gzipEncode($html);
         }
 
         return $html;
