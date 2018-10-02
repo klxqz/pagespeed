@@ -28,7 +28,7 @@ class pagespeed {
             ) {
                 if (!(wa('pagespeed')->getConfig()->getSettings('debug_mode') && !wa('pagespeed')->getConfig()->getSettings('debug_html_gzip'))) {
                     $response = wa()->getResponse();
-                    //$response->addHeader("Content-Encoding", "gzip");
+                    $response->addHeader("Content-Encoding", "gzip");
                 }
             }
         }
@@ -44,46 +44,61 @@ class pagespeed {
         }
 
         $html = $this->optimizers->html->removeComments($html);
-
-        $matches = $this->optimizers->search($html);
-
         if ($this->settings['debug_mode']) {
             $finish_remove_comments = microtime(true) - $start;
         }
 
-        $this->optimizers->css->execute();
-        if ($this->settings['debug_mode']) {
-            $finish_css = microtime(true) - $start;
-        }
         $this->optimizers->img->execute($html);
         if ($this->settings['debug_mode']) {
             $finish_img = microtime(true) - $start;
         }
-        $this->optimizers->js->execute();
-        if ($this->settings['debug_mode']) {
-            $finish_js = microtime(true) - $start;
+
+        $matches = $this->optimizers->search($html);
+        $cache_id = md5(serialize($matches));
+
+        $cache_time = wa()->getConfig()->isDebug() ? 0 : 7200;
+        $cache = new waSerializeCache($cache_id, $cache_time, 'pagespeed');
+
+        if ($cache && $cache->isCached()) {
+            $this->optimizers->setCacheResult($cache->get());
+        } else {
+            $this->optimizers->css->execute();
+            if ($this->settings['debug_mode']) {
+                $finish_css = microtime(true) - $start;
+            }
+
+            $this->optimizers->js->execute();
+            if ($this->settings['debug_mode']) {
+                $finish_js = microtime(true) - $start;
+            }
+
+            if ($cache) {
+                $cache->set($this->optimizers->getCacheResult());
+            }
         }
-        //$this->optimizers->html->execute();
+
+
+        $html = $this->optimizers->replace($html);
+
+        $html = $this->optimizers->html->execute($html);
         if ($this->settings['debug_mode']) {
             $finish_html = microtime(true) - $start;
         }
-
-        $html = $this->optimizers->replace($html);
 
         if ($this->settings['debug_mode']) {
             $finish = microtime(true) - $start;
 
             $html .= "\n<!-- pagespeed-comment-time:    {$finish_remove_comments}сек. -->";
-            $html .= "\n<!-- pagespeed-css-time:        " . $finish_css . "сек.   (" . ($finish_css - $finish_remove_comments) . "сек.) -->";
-            $html .= "\n<!-- pagespeed-img-time:        " . $finish_img . "сек.   (" . ($finish_img - $finish_css) . "сек.) -->";
-            $html .= "\n<!-- pagespeed-js-time:         " . $finish_js . "сек.   (" . ($finish_js - $finish_img) . "сек.) -->";
-            $html .= "\n<!-- pagespeed-html-time:       " . $finish_html . "сек.   (" . ($finish_html - $finish_js) . "сек.)  -->";
+            $html .= "\n<!-- pagespeed-css-time:        " . ifset($finish_css) . "сек.   (" . (ifset($finish_css) - $finish_remove_comments) . "сек.) -->";
+            $html .= "\n<!-- pagespeed-img-time:        " . $finish_img . "сек.   (" . ($finish_img - ifset($finish_css)) . "сек.) -->";
+            $html .= "\n<!-- pagespeed-js-time:         " . ifset($finish_js) . "сек.   (" . (ifset($finish_js) - $finish_img) . "сек.) -->";
+            $html .= "\n<!-- pagespeed-html-time:       " . $finish_html . "сек.   (" . ($finish_html - ifset($finish_js)) . "сек.)  -->";
             $html .= "\n<!-- pagespeed-time:            {$finish}сек. -->";
         }
 
 
         if ($this->settings['html_gzip']) {
-            //$html = $this->optimizers->html->gzipEncode($html);
+            $html = $this->optimizers->html->gzipEncode($html);
         }
 
         return $html;

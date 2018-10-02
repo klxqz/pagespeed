@@ -74,7 +74,7 @@ class pagespeedJsOptimizer extends pagespeedOptimizer {
         if ($this->settings['merge']) {
             $this->merge();
             $pagespeed_url = str_replace('/', '\/', wa()->getRouteUrl('pagespeed/frontend'));
-            foreach (self::$appends as $index => $append) {
+            foreach (self::$appends as $index => &$append) {
                 if ($append['tag'] != 'script' || !$append['url']) {
                     continue;
                 }
@@ -95,7 +95,7 @@ class pagespeedJsOptimizer extends pagespeedOptimizer {
                 if (file_exists($minify_path)) {
                     $hash = self::fileHash($minify_path);
                     $this->merge_list[$hash] = $minify_path;
-                    unset(self::$appends[$index]);
+                    $this->nullAppend($append);
                 }
             }
 

@@ -61,6 +61,9 @@ class pagespeedOptimizers {
         }
 
         foreach (pagespeedOptimizer::getAppends() as $append) {
+            if (!$append['html']) {
+                continue;
+            }
             switch ($append['place']) {
                 case pagespeedOptimizer::HEAD_OPEN:
                     $html = preg_replace("/(<head\b[^>]*>)/is", "$1\n{$append['html']}\n", $html);
@@ -77,6 +80,27 @@ class pagespeedOptimizers {
             }
         }
         return $html;
+    }
+
+    public function getCacheResult() {
+        $data = array();
+        foreach ($this->getOptimizers() as $type => $optimizer) {
+            if (in_array($type, array('css', 'js'))) {
+                $data['replacements'][$type] = $optimizer->getReplacements();
+            }
+        }
+        $data['appends'] = pagespeedOptimizer::getAppends();
+        return $data;
+    }
+
+    public function setCacheResult($data) {
+        foreach ($data['replacements'] as $type => $replacements) {
+            if (in_array($type, array('css', 'js'))) {
+                $this->$type->setReplacements($replacements);
+            }
+        }
+
+        pagespeedOptimizer::setAppends($data['appends']);
     }
 
 }

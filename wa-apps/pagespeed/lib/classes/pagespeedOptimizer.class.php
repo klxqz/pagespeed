@@ -43,6 +43,10 @@ abstract class pagespeedOptimizer {
         return self::$appends;
     }
 
+    public static function setAppends($appends) {
+        self::$appends = $appends;
+    }
+
     public function append($place = self::HEAD_CLOSE, $tag, $url = null, $content = null) {
 
         switch ($tag) {
@@ -76,7 +80,16 @@ abstract class pagespeedOptimizer {
         );
     }
 
-
+    public function nullAppend(&$append) {
+        $append = array(
+            'html' => '',
+            'tag' => '',
+            'url' => '',
+            'content' => '',
+            'place' => '',
+            'optimizer' => '',
+        );
+    }
 
     public function replace($html) {
         foreach ($this->replacements as $search => $replacement) {
@@ -108,6 +121,14 @@ abstract class pagespeedOptimizer {
             $this->buildReplacements($data);
         }
         return $data;
+    }
+
+    public function getReplacements() {
+        return $this->replacements;
+    }
+
+    public function setReplacements($replacements) {
+        $this->replacements = $replacements;
     }
 
     protected function buildReplacements($matches) {
